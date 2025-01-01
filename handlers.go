@@ -13,7 +13,6 @@ import (
 	"github.com/joho/godotenv"
 )
 
-
 func connectToDB() *sql.DB {
 
 	err := godotenv.Load()
@@ -38,7 +37,6 @@ func connectToDB() *sql.DB {
 	return db
 }
 	
-
 func CreateBook(w http.ResponseWriter, r *http.Request) {
 	var book Book
 
