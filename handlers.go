@@ -28,7 +28,7 @@ func connectToDB() *sql.DB {
 
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
-		log.Fatalf("Error opening database: %v", err)
+		log.Print("Database connection error")
 	}
 
 	if err = db.Ping(); err != nil {
@@ -44,7 +44,13 @@ func CreateBook(w http.ResponseWriter, r *http.Request) {
 
 	err := json.NewDecoder(r.Body).Decode(&book)
 	if err != nil {
-		log.Fatalf("error decoding the request body: %v", err)
+		respondWithError(w, http.StatusBadRequest, "Invalid request")
+		return 
+	}
+
+	if book.Title == "" || book.Author == "" || book.Price <= 0 {
+		respondWithError(w, http.StatusBadRequest, "Invalid request")
+		return
 	}
 
 	insertID := insertBook(book)
@@ -53,12 +59,7 @@ func CreateBook(w http.ResponseWriter, r *http.Request) {
 		Message: "Book created successfully",
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(res); err != nil {
-		http.Error(w, fmt.Sprintf("Error encoding response: %v", err), http.StatusInternalServerError)
-		return
-	}
-
+	respondWithJSON(w, http.StatusCreated, res)
 }
 
 func GetBook(w http.ResponseWriter, r *http.Request) {
@@ -66,77 +67,68 @@ func GetBook(w http.ResponseWriter, r *http.Request) {
 
 	id, err := strconv.Atoi(params["id"])
 	if err != nil {
-		log.Fatalf("unable to convert the string into int: %v", err)
+		respondWithError(w, http.StatusBadRequest, "Invalid request")
+		return 
 	}
 
 	book, err := getBook(int64(id))
 	if err != nil {
-		log.Fatalf("unable to get book: %v", err)
+		respondWithError(w, http.StatusInternalServerError, "Failed to fetch the book")
+		return 
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(book); err != nil {
-		http.Error(w, fmt.Sprintf("Error encoding response: %v", err), http.StatusInternalServerError)
-		return
-	}
+	respondWithJSON(w, http.StatusOK, book)
 }
 
 func GetAllBooks(w http.ResponseWriter, r *http.Request) {
 	books, err := getAllBooks()
 	if err != nil {
-		log.Fatalf("Unable to get all books: %v", err)
+		respondWithError(w, http.StatusInternalServerError, "Failed to get all books")
+		return 
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(books); err != nil {
-		http.Error(w, fmt.Sprintf("Error encoding response: %v", err), http.StatusInternalServerError)
-		return
-	}
+	respondWithJSON(w, http.StatusOK, books)
 }
 
 func UpdateBook(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	id, err := strconv.Atoi(params["id"])
 	if err != nil {
-		log.Fatalf("Unable to convert the string into int: %v", err)
+		respondWithError(w, http.StatusBadRequest, "Invalid request")
+		return 
 	}
 	var book Book
 	if err := json.NewDecoder(r.Body).Decode(&book); err != nil {
-		log.Fatalf("Unable to decode the request body: %v", err)
+		respondWithError(w, http.StatusInternalServerError, "Failed to respond your request")
+		return 
 	}
+
 	updatedRows := updateBook(int64(id), book)
-	msg := fmt.Sprintf("Book successfully updated. Total rows affected: %v", updatedRows)
+	msg := fmt.Sprintf("Book successfully updated: %v", updatedRows)
 	res := Response{
 		ID:      int64(id),
 		Message: msg,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(res); err != nil {
-		http.Error(w, fmt.Sprintf("Error encoding response: %v", err), http.StatusInternalServerError)
-		return
-	}
+	respondWithJSON(w, http.StatusOK, res)
 }
 
 func DeleteBook(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	id, err := strconv.Atoi(params["id"])
 	if err != nil {
-		log.Fatalf("Unable to convert the string into int: %v", err)
+		respondWithError(w, http.StatusBadRequest, "Invalid request")
+		return 
 	}
 
 	deletedRows := deleteBook(int64(id))
-	msg := fmt.Sprintf("Book deleted successfully. Total rows affected: %v", deletedRows)
+	msg := fmt.Sprintf("Book deleted successfully: %v", deletedRows)
 	res := Response{
 		ID:      int64(id),
 		Message: msg,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(res); err != nil {
-		http.Error(w, fmt.Sprintf("Error encoding response: %v", err), http.StatusInternalServerError)
-		return
-	}
+	respondWithJSON(w, http.StatusOK, res)
 }
 
 func insertBook(book Book) int64 {
@@ -147,7 +139,7 @@ func insertBook(book Book) int64 {
 	var id int64
 
 	if err := db.QueryRow(sqlStatement, book.Title, book.Author, book.Price).Scan(&id); err != nil {
-		log.Fatalf("unable to execute the query: %v", err)
+		log.Fatalf("Error inserting the book: %v", err)
 	}
 	fmt.Printf("Inserted a single book: %v", id)
 	return id
