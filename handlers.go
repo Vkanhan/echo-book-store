@@ -13,35 +13,31 @@ import (
 	"github.com/joho/godotenv"
 )
 
+
 func connectToDB() *sql.DB {
+
 	err := godotenv.Load()
-
-
-	portString := os.Getenv("PORT")
-	if portString == "" {
-		log.Fatal("PORT is not found on the .env file")
+	if err != nil {
+		log.Fatal("Error loading .env file")
 	}
 
 	dbURL := os.Getenv("DB_URL")
 	if dbURL == "" {
-		log.Fatal("DB_URL is not found in the enviroment")
+		log.Fatal("DB_URL is not found in the environment")
 	}
 
-	db, err := sql.Open("postgres", os.Getenv("POSTGRES_URL"))
+	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
-		log.Fatal("error loading postgres database")
-	}
-	defer db.Close()
-
-	err = db.Ping()
-	if err != nil {
-		log.Fatal("error pinging the database")
+		log.Fatalf("Error opening database: %v", err)
 	}
 
-	fmt.Println("Successfully connected")
+	if err = db.Ping(); err != nil {
+		log.Fatalf("Error pinging the database: %v", err)
+	}
 
 	return db
 }
+	
 
 func CreateBook(w http.ResponseWriter, r *http.Request) {
 	var book Book
@@ -57,7 +53,11 @@ func CreateBook(w http.ResponseWriter, r *http.Request) {
 		Message: "Book created successfully",
 	}
 
-	json.NewEncoder(w).Encode(res)
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(res); err != nil {
+		http.Error(w, fmt.Sprintf("Error encoding response: %v", err), http.StatusInternalServerError)
+		return
+	}
 
 }
 
@@ -74,7 +74,11 @@ func GetBook(w http.ResponseWriter, r *http.Request) {
 		log.Fatalf("unable to get book: %v", err)
 	}
 
-	json.NewEncoder(w).Encode(book)
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(book); err != nil {
+		http.Error(w, fmt.Sprintf("Error encoding response: %v", err), http.StatusInternalServerError)
+		return
+	}
 }
 
 func GetAllBooks(w http.ResponseWriter, r *http.Request) {
@@ -82,7 +86,12 @@ func GetAllBooks(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatalf("Unable to get all books: %v", err)
 	}
-	json.NewEncoder(w).Encode(books)
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(books); err != nil {
+		http.Error(w, fmt.Sprintf("Error encoding response: %v", err), http.StatusInternalServerError)
+		return
+	}
 }
 
 func UpdateBook(w http.ResponseWriter, r *http.Request) {
@@ -101,7 +110,12 @@ func UpdateBook(w http.ResponseWriter, r *http.Request) {
 		ID:      int64(id),
 		Message: msg,
 	}
-	json.NewEncoder(w).Encode(res)
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(res); err != nil {
+		http.Error(w, fmt.Sprintf("Error encoding response: %v", err), http.StatusInternalServerError)
+		return
+	}
 }
 
 func DeleteBook(w http.ResponseWriter, r *http.Request) {
@@ -117,7 +131,12 @@ func DeleteBook(w http.ResponseWriter, r *http.Request) {
 		ID:      int64(id),
 		Message: msg,
 	}
-	json.NewEncoder(w).Encode(res)
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(res); err != nil {
+		http.Error(w, fmt.Sprintf("Error encoding response: %v", err), http.StatusInternalServerError)
+		return
+	}
 }
 
 func insertBook(book Book) int64 {
