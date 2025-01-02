@@ -15,7 +15,7 @@ func respondWithError(w http.ResponseWriter, code int, msg string) {
 		Error string `json:"error"`
 	}
 
-	respondWithJSON(w, code, errResponse{Error: msg,})
+	respondWithJSON(w, code, errResponse{Error: msg})
 }
 
 func respondWithJSON(w http.ResponseWriter, code int, payload any) {
